@@ -1,46 +1,68 @@
 import streamlit as st
+import uuid
 
 st.set_page_config(page_title="Weather Agent", page_icon="⛅")
-st.title("🌦️ Simple Weather Agent")
+st.title("🌦️ Weather Agent with Session")
 
-# Initialize runner
+# Setup runner
 if 'runner' not in st.session_state:
     try:
         from google.adk.sessions import InMemorySessionService
         from google.adk.runners import Runner
         from agent.agent import weather_agent
         
-        # Setup runner exactly like your working example
         session_service = InMemorySessionService()
         runner = Runner(
             agent=weather_agent,
-            app_name="weather_agent_app",
+            app_name="weather_app",
             session_service=session_service
         )
         
         st.session_state.runner = runner
-        st.success("✅ Agent initialized!")
+        st.session_state.session_service = session_service
+        st.session_state.user_id = str(uuid.uuid4())
+        
+        st.success("✅ System ready!")
         
     except Exception as e:
         st.error(f"Setup failed: {str(e)}")
         st.stop()
 
-# Main interface
-st.write("Enter a location to get current weather information:")
+# Create session for this user
+if 'session' not in st.session_state:
+    try:
+        session = st.session_state.session_service.create_session(
+            app_name="weather_session",
+            user_id=st.session_state.user_id
+        )
+        st.session_state.session = session
+    except Exception as e:
+        st.error(f"Session creation failed: {str(e)}")
 
-location = st.text_input("📍 Location:", placeholder="e.g., Lagos, Tokyo, London")
+# Main app
+location = st.text_input("Enter location:", "Lagos")
 
-if st.button("Get Weather") and location:
-    with st.spinner("🌤️ Fetching weather..."):
-        try:
-            # Call runner.run() with the query as positional argument
-            # NOT as keyword argument 'input_text='
-            response = st.session_state.runner.run(
-                f"What's the current weather in {location}? Include temperature, conditions, humidity, wind speed."
-            )
-            
-            st.success("✅ Weather Found!")
-            st.write(response.output_text)
-            
-        except Exception as e:
-            st.error(f"❌ Error: {str(e)}")
+if st.button("Get Weather"):
+    if not location:
+        st.warning("Please enter a location")
+    else:
+        with st.spinner("Searching..."):
+            try:
+                # Two possible ways - try both
+                try:
+                    # Method 1: Direct runner.run() with query
+                    response = st.session_state.runner.run(
+                        f"Get current weather for {location}"
+                    )
+                except Exception as e1:
+                    # Method 2: Try with session parameter
+                    response = st.session_state.runner.run(
+                        f"Get current weather for {location}",
+                        session=st.session_state.session
+                    )
+                
+                st.subheader(f"🌤️ Weather in {location}")
+                st.write(response.output_text)
+                
+            except Exception as e:
+                st.error(f"Error: {str(e)}")
