@@ -30,27 +30,20 @@ if st.button("Get Weather"):
                     user_id=st.session_state.session_id
                 )
                 
-                # Create runner
+                # Create runner - SINGLE agent, not agents
                 runner = Runner(
-                    agents=[weather_agent],
+                    agent=weather_agent,  # Singular 'agent', not 'agents'
                     session=session
                 )
                 
                 # Run the agent
                 response = runner.run(
                     input_text=f"Get the current weather for {location}.",
-                    agent=weather_agent
                 )
                 
                 # Display the response
-                if hasattr(response, 'agent_responses'):
-                    for agent_response in response.agent_responses:
-                        if agent_response.agent_name == weather_agent.name:
-                            st.subheader(f"🌤️ Weather in {location}")
-                            st.write(agent_response.output_text)
-                            break
-                else:
-                    st.write(response.output_text)
+                st.subheader(f"🌤️ Weather in {location}")
+                st.write(response.output_text)
                     
             except Exception as e:
                 st.error(f"Error: {str(e)}")
