@@ -1,7 +1,5 @@
 import streamlit as st
 import uuid
-from google.adk.sessions import InMemorySessionService
-from google.adk.runners import Runner
 from agent.agent import weather_agent
 
 st.set_page_config(page_title="Weather Agent", page_icon="⛅")
@@ -22,6 +20,8 @@ if st.button("Get Weather"):
         with st.spinner("Searching..."):
             try:
                 # Create session service with required parameters
+                from google.adk.sessions import InMemorySessionService
+                
                 session_service = InMemorySessionService()
                 
                 # Create session with required app_name and user_id
@@ -30,20 +30,15 @@ if st.button("Get Weather"):
                     user_id=st.session_state.session_id
                 )
                 
-                # Create runner - SINGLE agent, not agents
-                runner = Runner(
-                    agent=weather_agent,  # Singular 'agent', not 'agents'
-                    session=session
-                )
-                
-                # Run the agent
-                response = runner.run(
+                # Run agent directly without Runner
+                result = weather_agent.run(
                     input_text=f"Get the current weather for {location}.",
+                    session=session
                 )
                 
                 # Display the response
                 st.subheader(f"🌤️ Weather in {location}")
-                st.write(response.output_text)
+                st.write(result.output_text)
                     
             except Exception as e:
                 st.error(f"Error: {str(e)}")
