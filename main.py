@@ -1,30 +1,29 @@
 import streamlit as st
-import uuid
 
 st.set_page_config(page_title="Weather Agent", page_icon="⛅")
 st.title("🌦️ Simple Weather Agent")
 
-# Initialize once
+# Initialize runner
 if 'runner' not in st.session_state:
     try:
         from google.adk.sessions import InMemorySessionService
         from google.adk.runners import Runner
         from agent.agent import weather_agent
         
-        # Create session service
+        # Setup runner exactly like your working example
         session_service = InMemorySessionService()
-        
-        # Create runner with session_service, not session
-        st.session_state.runner = Runner(
+        runner = Runner(
             agent=weather_agent,
-            session_service=session_service,
-            app_name="weather-app"
+            app_name="weather_agent_app",
+            session_service=session_service
         )
         
-        st.success("✅ Agent initialized successfully!")
+        st.session_state.runner = runner
+        st.success("✅ Agent initialized!")
+        
     except Exception as e:
         st.error(f"Setup failed: {str(e)}")
-        st.code(f"Error details: {str(e)}")
+        st.stop()
 
 # Main interface
 st.write("Enter a location to get current weather information:")
@@ -34,8 +33,10 @@ location = st.text_input("📍 Location:", placeholder="e.g., Lagos, Tokyo, Lond
 if st.button("Get Weather") and location:
     with st.spinner("🌤️ Fetching weather..."):
         try:
+            # Call runner.run() with the query as positional argument
+            # NOT as keyword argument 'input_text='
             response = st.session_state.runner.run(
-                input_text=f"What's the current weather in {location}? Include temperature, conditions, humidity, wind speed, and any important alerts."
+                f"What's the current weather in {location}? Include temperature, conditions, humidity, wind speed."
             )
             
             st.success("✅ Weather Found!")
