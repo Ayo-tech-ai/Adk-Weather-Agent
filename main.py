@@ -2,50 +2,69 @@ import streamlit as st
 import uuid
 
 st.set_page_config(page_title="Weather Agent", page_icon="⛅")
-st.title("🌦️ Simple Weather Agent (Google ADK)")
-st.write("Enter any location and I will fetch the current weather using Google Search.")
+st.title("🌦️ Weather Agent with History")
 
-# Generate a unique session ID for each user
+# Initialize session state
 if 'session_id' not in st.session_state:
     st.session_state.session_id = str(uuid.uuid4())
+if 'conversation' not in st.session_state:
+    st.session_state.conversation = []
+if 'runner' not in st.session_state:
+    # Initialize runner once
+    try:
+        from google.adk.sessions import InMemorySessionService
+        from google.adk.runners import Runner
+        from agent.agent import weather_agent
+        
+        session_service = InMemorySessionService()
+        session = session_service.create_session(
+            app_name="weather-chat",
+            user_id=st.session_state.session_id
+        )
+        
+        st.session_state.runner = Runner(
+            agent=weather_agent,
+            session=session
+        )
+        st.success("✅ Agent initialized")
+    except Exception as e:
+        st.error(f"Failed to initialize agent: {str(e)}")
 
-location = st.text_input("Enter a location:", "Lagos")
+# Display conversation history
+for msg in st.session_state.conversation:
+    with st.chat_message(msg["role"]):
+        st.write(msg["content"])
 
-if st.button("Get Weather"):
-    if not location.strip():
-        st.error("Please enter a valid location.")
-    else:
-        with st.spinner(f"Searching for weather in {location}..."):
+# Input for new location
+if prompt := st.chat_input("Enter a location for weather info:"):
+    # Add user message to history
+    st.session_state.conversation.append({"role": "user", "content": prompt})
+    
+    # Display user message
+    with st.chat_message("user"):
+        st.write(prompt)
+    
+    # Get weather response
+    with st.chat_message("assistant"):
+        with st.spinner("Searching..."):
             try:
-                # Import inside try block
-                from google.adk.sessions import InMemorySessionService
-                from google.adk.runners import Runner
-                from agent.agent import weather_agent
-                
-                # Create session service
-                session_service = InMemorySessionService()
-                
-                # Create session with required parameters
-                session = session_service.create_session(
-                    app_name="weather-agent-app",
-                    user_id=st.session_state.session_id
+                response = st.session_state.runner.run(
+                    input_text=f"Get current weather for {prompt}"
                 )
                 
-                # Create and run the runner
-                runner = Runner(
-                    agent=weather_agent,
-                    session=session
-                )
-                
-                # Run the agent
-                response = runner.run(
-                    input_text=f"Get the current weather for {location}. Include temperature, conditions, humidity, and wind speed."
-                )
-                
-                # Display the response
-                st.subheader(f"🌤️ Weather in {location}")
+                # Display response
                 st.write(response.output_text)
-                    
+                
+                # Add to conversation history
+                st.session_state.conversation.append({
+                    "role": "assistant", 
+                    "content": response.output_text
+                })
+                
             except Exception as e:
-                st.error(f"Error: {str(e)}")
-                st.code(f"Full error: {str(e)}")
+                error_msg = f"Error: {str(e)}"
+                st.error(error_msg)
+                st.session_state.conversation.append({
+                    "role": "assistant", 
+                    "content": error_msg
+                })
