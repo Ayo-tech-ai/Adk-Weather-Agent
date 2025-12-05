@@ -1,26 +1,18 @@
+import os
 from google.adk.agents import Agent
-from google.adk import agents
-from google import genai
+from google.adk.models.google_llm import Gemini
 from .tools import weather_search_tool
 
-# Initialize Gemini FlashLite 2 using the new API format
-# ADK 1.20.0 has a different structure for models
-client = genai.Client(api_key=None)  # Will use GOOGLE_API_KEY from environment
-
+# Create weather agent using the correct Gemini model class
 weather_agent = Agent(
-    # Use the new model parameter format
-    model="gemini-2.0-flash-lite",
+    name="weather_agent",
+    model=Gemini(model="gemini-2.0-flash-lite"),
+    instruction="""You are a weather assistant. Given a location:
+1. Search for current weather information using Google Search
+2. Return temperature, conditions, humidity, wind speed
+3. Include any weather advisories or warnings
+4. Format response clearly and concisely
+5. Focus on accuracy and practical information""",
     tools=[weather_search_tool],
-    instructions="""
-You are a simple weather assistant.
-Given a location, always search online and return clean, short weather details.
-Include:
-1. Current temperature
-2. Weather conditions (sunny, rainy, etc.)
-3. Humidity if available
-4. Wind speed if available
-5. Any relevant advisories
-
-Format the response in a clear, readable way.
-""",
+    output_key="weather_result"
 )
